@@ -1,9 +1,14 @@
-README
-======
+README.md - 20161226
+=========
 
 osm2shp is a converter which converts from OpenStreetMap dumps to shapefiles. It can convert large files because
 it uses a sqlite3 database for storage of the temporary nodes. The layer configuration is currently hard-coded.
 Thanks to boost::iostreams osm2shp can read bz2 and gz streams directly.
+
+Building
+========
+
+See some dependency and build notes in [build.x64/BUILDME.md](build.x64/BUILDME.md)
 
 Usage
 =====
