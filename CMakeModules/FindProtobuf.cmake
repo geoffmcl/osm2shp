@@ -38,7 +38,7 @@ if(MSVC)
     endif ()
 else()
     find_library(PROTOBUF_LIBRARY
-        NAMES libprotobuf
+        NAMES libprotobuf protobuf
         HINTS ${PROTOBUF_ROOT} $ENV{PROTOBUF_ROOT}
         PATHS /usr/local/lib /usr/lib
         PATH_SUFFIXES lib

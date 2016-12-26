@@ -5,3 +5,5 @@ osm2shp
 osmfilter
 osmchange
 .tmpnodes.sqlite*
+*~
+
