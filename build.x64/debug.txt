@@ -1,0 +1,5 @@
+For MSVC need to add path to ZLIB
+
+PATH=X:\3rdParty.x64\bin
+
+
