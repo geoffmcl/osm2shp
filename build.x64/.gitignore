@@ -11,3 +11,5 @@ cmake_install.cmake
 *.sln
 *.user
 x64/*
+Makefile
+
