@@ -1,6 +1,11 @@
-README.txt - 20161222
+# BUILDME.md - 20161222
 
-Build of this utility with msvc140.x64
+Some notes on building **osm2shp** in Windows, using MSVC14,x64, and in Linux
+
+WIN32
+=====
+
+Building of this **osm2shp** utility with msvc140.x64
 
 Dependencies:
 
@@ -14,8 +19,9 @@ Dependencies:
 
 = Protobuf - From https://github.com/google/protobuf - hprotobufx.bat - installed X:/3rdParty.x64
 
+= zlib - http://www.zlib.net/
+
 And eventually, on LINK -
-========================
 
 1. external symbol __imp_XML_ParserCreate referenced in function "public: virtual void __cdecl Osmium::Input::XML<class osm::handler>::parse(void)"
 
@@ -37,8 +43,29 @@ Hmmm, need to add find_package(SQlite3) ... Have a few samples X:\flightgear\CMa
 
 8. Needed to build, install, and find ZLIB
 
-*** AND IT COMPILED *** ;=))
+**AND IT COMPILED** ;=))
 
 I remember chopping some source using 'fork'! Need to provide say a pthreads substitute...
+
+Linux
+=====
+
+Dependencies: Basically the same as for Windows
+
+= Boost - `sudo apt-get install libboost-all-dev`, or search with `aptitude search boost`
+
+= ZLIB - Probably already installed... http://www.zlib.net/
+
+= shaplib - http://shapelib.maptools.org/ - 
+
+= libprotobuf - `sudo apt-get install libprotobuf-dev`
+
+= protoc - `sudo apt-get install protobuf-compiler
+
+= osmpdb - OSM-binary - https://github.com/scrosby/OSM-binary - clone, build, install
+
+= Osmium - http://wiki.openstreetmap.org/wiki/Osmium/Quick_Start#Install_headers
+
+Good luck, Geoff.
 
 ; eof

@@ -6,4 +6,4 @@ osmfilter
 osmchange
 .tmpnodes.sqlite*
 *~
-
+*.bak
