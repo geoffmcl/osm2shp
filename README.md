@@ -11,7 +11,8 @@ Building
 See some dependency and build notes in [build.x64/BUILDME.md](build.x64/BUILDME.md), but now this project is built using the [cmake](https://cmake.org/download/) configuraion and build file generation, so once all dependancies have been met, then it should be as simple as -
 
 ```
-$ git@github.com:geoffmcl/osm2shp.git
+$ cd projects/dir
+$ git clone git@github.com:geoffmcl/osm2shp.git
 $ cd osm2shp/build.x64
 $ cmake .. [options] [-DCMAKE_INSTALL_PREFIX=/as/desired] [-G "generator"], if other than the default desired
 $ make (in linux), or
