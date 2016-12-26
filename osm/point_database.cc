@@ -47,10 +47,17 @@ void point_database::set(int64_t id, double x, double y) {
 
 bool point_database::get(const Osmium::OSM::WayNodeList& ids, double* x_result, double* y_result) {
         const int block_size = 128;
-
+        bool bret = true;
         int points = ids.size();
-
+#ifdef _MSC_VER
+        bool *resolved = (bool *)malloc(sizeof(bool) *points);
+        if (!resolved) {
+            std::cerr << "MEMORY FAILED!" << std::endl;
+            return false;
+        }
+#else
         bool resolved[points];
+#endif
         memset(resolved, 0, points * sizeof (bool));
 
         stmt_wrapper block_stmt, rest_stmt;
@@ -104,11 +111,13 @@ bool point_database::get(const Osmium::OSM::WayNodeList& ids, double* x_result, 
         for (int n = 0; n < points; ++n) {
                 if (!resolved[n]) {
                         std::cerr << "unresolved node " << ids[n].ref() << std::endl;
-                        return false;
+                        bret = false;
                 }
         }
-
-        return true;
+#ifdef _MSC_VER
+        free(resolved);
+#endif
+        return bret;
 }
 
 void point_database::close() {

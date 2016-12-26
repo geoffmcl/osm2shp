@@ -5,7 +5,13 @@
 #include <sys/stat.h>
 #include <boost/foreach.hpp>
 #include <boost/format.hpp>
-
+#ifdef _MSC_VER
+#include <process.h>    // for _getpid
+#include <iostream>
+#include <direct.h> // for _mkdir
+#define getpid _getpid
+#define mkdir(a,b)  _mkdir(a)
+#endif // _MSC_VER
 #define foreach BOOST_FOREACH
 
 namespace osm {
@@ -113,11 +119,21 @@ void handler::way(const shared_ptr<Osmium::OSM::Way>& way) {
 
         foreach (const layer& lay, layers_) {
                 if (lay.shape()->type() == type && has_key_value(way->tags(), lay.type().c_str(), lay.subtype().c_str())) {
+#ifdef _MSC_VER
+                    size_t s = way->nodes().size();
+                    double *x = (double *)malloc(s);
+                    double *y = (double *)malloc(s);
+#else
                         double x[way->nodes().size()], y[way->nodes().size()];
+#endif
                         if (tmp_nodes_.get(way->nodes(), x, y)) {
                                 lay.shape()->multipoint(type, way->nodes().size(), x, y);
                                 ++exported_ways_;
                         }
+#ifdef _MSC_VER
+                        if (x) free(x);
+                        if (y) free(y);
+#endif
                         break;
                 }
         }
