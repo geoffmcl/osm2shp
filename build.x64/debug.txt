@@ -3,3 +3,5 @@ For MSVC need to add path to ZLIB
 PATH=X:\3rdParty.x64\bin
 
 
+D:\SAVES\OSM\ygil3.osm temp-shape
+
