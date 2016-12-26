@@ -60,7 +60,7 @@ Dependencies: Basically the same as for Windows
 
 = libprotobuf - `sudo apt-get install libprotobuf-dev`
 
-= protoc - `sudo apt-get install protobuf-compiler
+= protoc - `sudo apt-get install protobuf-compiler`
 
 = osmpdb - OSM-binary - https://github.com/scrosby/OSM-binary - clone, build, install
 
