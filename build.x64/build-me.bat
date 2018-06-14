@@ -66,7 +66,10 @@
 
 @REM if these are also required
 @REM cmake --build . --config RelWithDebInfo >> %TMPLOG% 2>&1
-@REM if ERRORLEVEL 1 goto ERR4
+@echo Doing: 'cmake --build . --config RelWithDebInfo
+@echo Doing: 'cmake --build . --config RelWithDebInfo >> %TMPLOG%
+@cmake --build . --config RelWithDebInfo >> %TMPLOG% 2>&1
+@if ERRORLEVEL 1 goto ERR4
 
 @REM cmake --build . --config MinSizeRel >> %TMPLOG% 2>&1
 @REM if ERRORLEVEL 1 goto ERR5

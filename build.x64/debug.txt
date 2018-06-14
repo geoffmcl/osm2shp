@@ -1,7 +1,10 @@
-For MSVC need to add path to ZLIB
 
-PATH=X:\3rdParty.x64\bin
+
+For MSVC need to add path to ZLIB. pthreads, ...
+
+PATH=X:\3rdParty.x64\bin;%PATH%
 
 
 D:\SAVES\OSM\ygil3.osm temp-shape
 
+run-exe D:\SAVES\OSM\australia.osm.gz temp-base 

@@ -133,6 +133,44 @@ else ()
     message(FATAL_ERROR "*** ZLIB NOT FOUND!" )
 endif ()    
 
+#################################################################
+### Use THREADS to replace FORK
+# find the threads library
+find_package(Threads)
+if(Threads_FOUND)
+  if(WIN32)
+    list(APPEND add_LIBS winmm.lib ws2_32.lib)
+	###message( STATUS "*** ENV INCLUDE $ENV{INCLUDE}")
+	message( STATUS "*** Finding pthread.h HINTS [${CMAKE_PREFIX_PATH}] PATHS [${CMAKE_INCLUDE_PATH}] PATH_SUFFIXES include" )
+	###find_file( thread_INC pthread.h
+	find_path( thread_INC pthread.h
+		HINTS ${CMAKE_PREFIX_PATH} $ENV{INCLUDE}
+		PATHS ${CMAKE_INCLUDE_PATH} $ENV{INCLUDE}
+		PATH_SUFFIXES include )
+	if(thread_INC)
+		include_directories( SYSTEM ${thread_INC} )
+		message(STATUS "*** thread_INC: ${thread_INC}")
+	else()
+		message(FATAL_ERROR "*** thread_INC: ${thread_INC} pthread.h NOT FOUND!")
+	endif()
+	find_library( thread_LIB pthreadVC2.lib
+		HINTS ${CMAKE_PREFIX_PATH} $ENV{LIB}
+		PATHS ${CMAKE_INCLUDE_PATH} $ENV{LIB}
+		PATH_SUFFIXES lib )
+	if(thread_LIB)
+		list(APPEND add_LIBS ${thread_LIB})
+		message(STATUS "*** Found ${thread_LIB})" )
+	else()
+		message( FATAL_ERROR "*** NOT FOUND target_link_libraries(pthread1 ${thread_LIB})" )
+	endif()
+  else(WIN32)
+     list(APPEND add_LIBS ${CMAKE_THREAD_LIBS_INIT})
+  endif(WIN32)
+else()
+  message( FATAL_ERROR "*** THREADS NOT FOUND!")
+endif()
+#################################################################
+
 # configuration file, if needed
 # configure_file( ${CMAKE_SOURCE_DIR}/config.h.cmake ${CMAKE_BINARY_DIR}/config.h )
 # add_definitions( -DHAVE_CONFIG_H )
