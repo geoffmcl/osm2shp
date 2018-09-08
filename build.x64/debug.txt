@@ -1,4 +1,5 @@
 
+G:\D\data\OSM\pbf\central-america-latest.osm.pbf temp-shp
 
 For MSVC need to add path to ZLIB. pthreads, ...
 
