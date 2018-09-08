@@ -4,7 +4,7 @@
 @if NOT EXIST %TMPBIN% goto NOEXE
 @if NOT EXIST %TMP3RD%\nul goto NO3RD
 
-@set PATH=%TMP3RD%;%PATH%
+@REM set PATH=%TMP3RD%;%PATH%
 
 %TMPBIN% %*
 
