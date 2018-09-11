@@ -32,7 +32,9 @@ handler::handler(const std::string& base)
         : tmp_nodes_(boost::str(boost::format("tmpnodes-%1%.sqlite") % getpid())),
           processed_nodes_(0), processed_ways_(0),
           exported_nodes_(0), exported_ways_(0),
-          base_path_(base) {
+          base_path_(base),
+    way_skipped_(0), ways_skipped_(0),
+    nodes_no_id_(0), nodes_no_name_(0), nodes_skipped_(0) {
 
         mkdir(base.c_str(), 0755);
 
@@ -89,23 +91,31 @@ void handler::node(const shared_ptr<Osmium::OSM::Node const>& node) {
         if (++processed_nodes_ % 100000 == 0)
                 std::cout << processed_nodes_ << " nodes processed, " << exported_nodes_ << " nodes exported" << std::endl;
 
-        if (id_ <= 0)
-                return;
+        if (id_ <= 0) {
+            nodes_no_id_++;
+            return;
+        }
 
         tmp_nodes_.set(id_, x_, y_);
 
         const char* name = node->tags().get_value_by_key("name");
-        if (!name)
-                return;
-
+        if (!name) {
+            nodes_no_name_++;
+            return;
+        }
+        bool fnd = false;
         foreach (const layer& lay, layers_) {
                 if (lay.shape()->type() == SHPT_POINT &&
                     has_key_value(node->tags(), lay.type().c_str(), lay.subtype().c_str())) {
                         lay.shape()->point(x_, y_);
                         lay.shape()->add_attribute(0, name);
                         ++exported_nodes_;
+                        fnd = true;
                         break;
                 }
+        }
+        if (!fnd) {
+            nodes_skipped_++;
         }
 }
 
@@ -114,28 +124,56 @@ void handler::way(const shared_ptr<Osmium::OSM::Way>& way) {
                 std::cout << processed_ways_ << " ways processed, " << exported_ways_ << " ways exported" << std::endl;
 
         int type = is_area(way) ? SHPT_POLYGON : SHPT_ARC;
-        if ((type == SHPT_POLYGON && way->nodes().size() < 3) || way->nodes().size() < 2)
-                return;
+        if ((type == SHPT_POLYGON && way->nodes().size() < 3) || way->nodes().size() < 2) {
+            way_skipped_++;
+            return;
+        }
+
+        bool added = false;
 
         foreach (const layer& lay, layers_) {
                 if (lay.shape()->type() == type && has_key_value(way->tags(), lay.type().c_str(), lay.subtype().c_str())) {
 #ifdef _MSC_VER
                     size_t s = way->nodes().size();
-                    double *x = (double *)malloc(s);
-                    double *y = (double *)malloc(s);
-#else
-                        double x[way->nodes().size()], y[way->nodes().size()];
-#endif
-                        if (tmp_nodes_.get(way->nodes(), x, y)) {
-                                lay.shape()->multipoint(type, way->nodes().size(), x, y);
-                                ++exported_ways_;
+                    double *x = 0;
+                    double *y = 0;
+                    if (s) {
+                        x = (double *)malloc(s * sizeof(double));
+                        if (!x) {
+                            std::cerr << "MEMORY FAILED for double *x!" << std::endl;
+                            way_skipped_++;
+                            return;
                         }
+                        y = (double *)malloc(s * sizeof(double));
+                        if (!y) {
+                            free(x);
+                            std::cerr << "MEMORY FAILED for double *y!" << std::endl;
+                            way_skipped_++;
+                            return;
+                        }
+                    }
+#else
+                    double x[way->nodes().size()], y[way->nodes().size()];
+#endif
+                    if (tmp_nodes_.get(way->nodes(), x, y)) {
+                        lay.shape()->multipoint(type, way->nodes().size(), x, y);
+                        ++exported_ways_;
+                        added = true;
+                    }
 #ifdef _MSC_VER
-                        if (x) free(x);
-                        if (y) free(y);
+                    if (x)
+                        free(x);
+                    if (y)
+                        free(y);
+                    x = 0;
+                    y = 0;
 #endif
                         break;
                 }
+        }
+
+        if (!added) {
+            ways_skipped_++;
         }
 }
 
