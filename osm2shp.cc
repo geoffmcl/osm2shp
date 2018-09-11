@@ -7,18 +7,35 @@
 
 #include "osm/handler.hpp"
 
-int main(int argc, char* argv[]) {
-        try {
-                if (argc != 3) {
-                        std::cerr << "usage: " << argv[0] << " planet.osm(.gz|.bz2) base-path" << std::endl;
-                        return 1;
-                }
-                Osmium::OSMFile  infile(argv[1]);
-                osm::handler handler(argv[2]);
-                Osmium::Input::read(infile, handler);
-                return 0;
-        } catch (const std::exception& ex) {
-                std::cerr << ex.what() << std::endl;
-                return 1;
-        }
+int process_file(const char *file, const char *dir)
+{
+    int iret = 0;
+    try {
+        Osmium::OSMFile  infile(file);
+        osm::handler handler(dir);
+        Osmium::Input::read(infile, handler);
+        handler.node_stats();
+        handler.way_stats();
+    }
+    catch (const std::exception& ex) {
+        std::cerr << ex.what() << std::endl;
+        iret = 1;
+    }
+    std::cout << "Done processing " << iret << std::endl;
+
+    return iret;
+}
+
+int main(int argc, char* argv[]) 
+{
+    int iret = 0;
+    char *infile = argv[1];
+    char *outdir = argv[2];
+    if (argc != 3) {
+        std::cerr << "usage: " << argv[0] << " planet.osm(.gz|.bz2|.pbf) base-path" << std::endl;
+        return 1;
+    }
+    iret = process_file(infile, outdir);
+
+   return iret;
 }
