@@ -1,4 +1,8 @@
 
+# file downloaded using JSOM...
+#2018-06-14  18:01         2,987,857 Moorea.osm
+C:\Users\Public\Documents\JOSM\Moorea.osm
+
 G:\D\data\OSM\pbf\central-america-latest.osm.pbf temp-shp
 
 For MSVC need to add path to ZLIB. pthreads, ...
