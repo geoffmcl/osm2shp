@@ -13,3 +13,5 @@ cmake_install.cmake
 x64/*
 Makefile
 tmpnodes*
+RelWithDebInfo/*
+temp*
