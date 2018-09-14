@@ -12,6 +12,13 @@
 #include <osmium/osm/node.hpp>
 #include <osmium/handler.hpp>
 
+#define uo_show_skipped_ways    0x00000001
+#define uo_show_skipped_keys    0x00000002
+#define uo_show_skipped_tags    0x00000004
+#define uo_show_skipped_nodes   0x00000008
+#define uo_show_saved_nodes     0x00000010
+
+
 namespace osm {
 
 class shape_file;
@@ -22,7 +29,7 @@ class handler: public Osmium::Handler::Base {
 
 public:
 
-        handler(const std::string& base);
+        handler(const std::string& base, uint64_t opts);
         ~handler();
 
         void node(const shared_ptr<Osmium::OSM::Node const>& node);
@@ -47,6 +54,7 @@ private:
         void add_layer(const std::string& name, const std::string& type, const std::string& subtype);
         bool is_area(const shared_ptr<Osmium::OSM::Way>& way);
 
+        uint64_t             options_;
         point_database       tmp_nodes_;
         int64_t              processed_nodes_;
         int64_t              processed_ways_;

@@ -14,6 +14,33 @@
 #endif // _MSC_VER
 #define foreach BOOST_FOREACH
 
+typedef std::vector<Osmium::OSM::Tag> vTAGS;
+typedef std::vector<std::string> vSTG;
+
+static vSTG vKeysSkipped;
+bool Is_in_KeySkipped(std::string & key)
+{
+    size_t ii, max = vKeysSkipped.size();
+    for (ii = 0; ii < max; ii++) {
+        if (vKeysSkipped[ii] == key)
+            return true;
+    }
+    return false;
+
+}
+
+static vTAGS vSkipped;
+
+bool Is_in_skipped(Osmium::OSM::Tag &tag) 
+{
+    size_t ii, max = vSkipped.size();
+    for (ii = 0; ii < max; ii++) {
+        if (vSkipped[ii] == tag)
+            return true;
+    }
+    return false;
+}
+
 namespace osm {
 
 template<typename T, class K>
@@ -28,11 +55,11 @@ inline bool has_key_value(const T& map, const K& key, const V& value) {
 		return v && !strcmp(v, value);
 }
 
-handler::handler(const std::string& base)
+handler::handler(const std::string& base, uint64_t opts)
         : tmp_nodes_(boost::str(boost::format("tmpnodes-%1%.sqlite") % getpid())),
           processed_nodes_(0), processed_ways_(0),
           exported_nodes_(0), exported_ways_(0),
-          base_path_(base),
+          base_path_(base), options_(opts),
     way_skipped_(0), ways_skipped_(0),
     nodes_no_id_(0), nodes_no_name_(0), nodes_skipped_(0) {
 
@@ -48,7 +75,9 @@ handler::handler(const std::string& base)
         add_shape("village_point",    SHPT_POINT);
         add_shape("water_line",       SHPT_ARC);
         add_shape("water_area",       SHPT_POLYGON);
+        add_shape("coast_line",       SHPT_ARC);
 
+        add_layer("roadbig_line", "highway", "tertiary"); // Add highway=tertiary
         add_layer("roadbig_line",     "highway",  "motorway");
         add_layer("roadbig_line",     "highway",  "trunk");
         add_layer("roadmedium_line",  "highway",  "primary");
@@ -61,6 +90,8 @@ handler::handler(const std::string& base)
         add_layer("water_line",       "waterway", "river");
         add_layer("water_line",       "waterway", "canal");
         add_layer("water_area",       "natural",  "water");
+        add_layer("coast_line", "natural", "coastline");    // Add coastline shp
+
 }
 
 handler::~handler() {
@@ -105,16 +136,37 @@ void handler::node(const shared_ptr<Osmium::OSM::Node const>& node) {
         }
         bool fnd = false;
         foreach (const layer& lay, layers_) {
-                if (lay.shape()->type() == SHPT_POINT &&
-                    has_key_value(node->tags(), lay.type().c_str(), lay.subtype().c_str())) {
+                if (lay.shape()->type() == SHPT_POINT ) {
+                    const char *typ = lay.type().c_str();
+                    const char *val = lay.subtype().c_str();
+                    if (has_key_value(node->tags(), typ, val)) {
                         lay.shape()->point(x_, y_);
                         lay.shape()->add_attribute(0, name);
                         ++exported_nodes_;
                         fnd = true;
+                        if (options_ & uo_show_saved_nodes) {
+                            std::cerr << "Saved Node " << id_ << 
+                                ", x=" << x_ << ", y=" << y_ << 
+                                ", k=" << typ << ", v=" << val << 
+                                ", name " << name << std::endl;
+                        }
                         break;
+                    }
                 }
         }
         if (!fnd) {
+            if (options_ & uo_show_skipped_nodes) {
+                Osmium::OSM::TagList n_tags = node->tags();
+                size_t ii, len = n_tags.size();
+                Osmium::OSM::Tag *tag;
+                std::cerr << "Skipping Node " << id_ << ", with " << len << " tags" << std::endl;
+                for (ii = 0; ii < len; ii++) {
+                    tag = &n_tags[ii];   // get a pointer to the OSM tag - key=val
+                    const char *key = tag->key();
+                    const char *val = tag->value();
+                    std::cerr << "  " << key << "=" << val << std::endl;
+                }
+            }
             nodes_skipped_++;
         }
 }
@@ -123,8 +175,9 @@ void handler::way(const shared_ptr<Osmium::OSM::Way>& way) {
         if (++processed_ways_ % 10000 == 0)
                 std::cout << processed_ways_ << " ways processed, " << exported_ways_ << " ways exported" << std::endl;
 
+        size_t wns = way->nodes().size();
         int type = is_area(way) ? SHPT_POLYGON : SHPT_ARC;
-        if ((type == SHPT_POLYGON && way->nodes().size() < 3) || way->nodes().size() < 2) {
+        if ((type == SHPT_POLYGON && wns < 3) || wns < 2) {
             way_skipped_++;
             return;
         }
@@ -132,7 +185,10 @@ void handler::way(const shared_ptr<Osmium::OSM::Way>& way) {
         bool added = false;
 
         foreach (const layer& lay, layers_) {
-                if (lay.shape()->type() == type && has_key_value(way->tags(), lay.type().c_str(), lay.subtype().c_str())) {
+            const char *typ = lay.type().c_str();
+            const char *val = lay.subtype().c_str();
+            if (lay.shape()->type() == type) {
+                if (has_key_value(way->tags(), typ, val)) {
 #ifdef _MSC_VER
                     size_t s = way->nodes().size();
                     double *x = 0;
@@ -168,11 +224,52 @@ void handler::way(const shared_ptr<Osmium::OSM::Way>& way) {
                     x = 0;
                     y = 0;
 #endif
-                        break;
+                    break;
                 }
+            }
         }
 
         if (!added) {
+            if (options_ & uo_show_skipped_ways) {
+                bool skip_keys = (options_ & uo_show_skipped_keys) ? true : false;
+                bool skip_tags = (options_ & uo_show_skipped_tags) ? true : false;
+
+                const char *ctyp = (type == SHPT_POLYGON) ? "poly" : "arc";
+                // Osmium::OSM::TagList
+                Osmium::OSM::Tag *tag;
+                Osmium::OSM::TagList &mtags = way->tags();
+                size_t ii, len = mtags.size();
+                //for (const_iterator it = mtags.begin(); it != mtags.end(); ++it) {
+                //    if (!strcmp(it->key(), key)) {
+                //        return it->value();
+                //    }
+                //}
+                bool dnhdr = false;
+                for (ii = 0; ii < len; ii++) {
+                    tag = &mtags[ii];   // get a pointer to the OSM tag - key=val
+                    const char *key = tag->key();
+                    std::string s(key);
+                    if (skip_keys && Is_in_KeySkipped(s)) {
+                        // have already shown this k
+                    }
+                    else {
+                        vKeysSkipped.push_back(s);
+                        const char *val = tag->value();
+                        Osmium::OSM::Tag t(key, val);   // create new tag
+                        if (skip_tags && Is_in_skipped(t)) {
+                            // have already shown this k=v
+                        }
+                        else {
+                            if (!dnhdr) {
+                                std::cerr << "Skipping " << ctyp << " Way, with " << wns << " nodes, " << len << " tags" << std::endl;
+                                dnhdr = true;
+                            }
+                            std::cerr << "  " << key << "=" << val << std::endl;
+                            vSkipped.push_back(t);
+                        }
+                    }
+                }
+            }
             ways_skipped_++;
         }
 }

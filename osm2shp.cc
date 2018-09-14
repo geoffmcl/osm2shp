@@ -21,19 +21,21 @@
 
 #include "osm/handler.hpp"
 
+#define def_usr_opts (uo_show_skipped_ways | uo_show_skipped_keys | uo_show_skipped_tags | uo_show_skipped_nodes | uo_show_saved_nodes)
+
 static const char *module = "osm2shp";
 static const char *version = "0.0.9 2018.09.12";
 
 static const char *usr_input = 0;
 static const char *usr_out_dir = 0;
-
+static uint64_t usr_options = def_usr_opts;
 
 int process_file(const char *file, const char *dir)
 {
     int iret = 0;
     try {
         Osmium::OSMFile  infile(file);
-        osm::handler handler(dir);
+        osm::handler handler(dir, usr_options);
         Osmium::Input::read(infile, handler);
         handler.node_stats();
         handler.way_stats();
