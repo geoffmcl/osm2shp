@@ -17,6 +17,9 @@
 #define uo_show_skipped_tags    0x00000004
 #define uo_show_skipped_nodes   0x00000008
 #define uo_show_saved_nodes     0x00000010
+#define uo_show_saved_ways      0x00000020
+#define uo_show_noname_nodes    0x00000040
+
 
 
 namespace osm {

@@ -21,7 +21,8 @@
 
 #include "osm/handler.hpp"
 
-#define def_usr_opts (uo_show_skipped_ways | uo_show_skipped_keys | uo_show_skipped_tags | uo_show_skipped_nodes | uo_show_saved_nodes)
+#define def_usr_opts (uo_show_skipped_ways | uo_show_skipped_keys | uo_show_skipped_tags | \
+    uo_show_skipped_nodes | uo_show_saved_nodes | uo_show_saved_ways | uo_show_noname_nodes )
 
 static const char *module = "osm2shp";
 static const char *version = "0.0.9 2018.09.12";

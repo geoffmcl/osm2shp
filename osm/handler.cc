@@ -100,6 +100,10 @@ handler::~handler() {
 
         foreach (shape_map::value_type& value, shapes_)
                 delete value.second;
+
+        vKeysSkipped.clear();
+        vSkipped.clear();
+
 }
 
 void handler::add_shape(const std::string& name, int type) {
@@ -132,6 +136,10 @@ void handler::node(const shared_ptr<Osmium::OSM::Node const>& node) {
         const char* name = node->tags().get_value_by_key("name");
         if (!name) {
             nodes_no_name_++;
+            if (options_ & uo_show_noname_nodes) {
+                std::cerr << "Node " << id_ <<
+                    ", x=" << x_ << ", y=" << y_ << " - noname" << std::endl;
+            }
             return;
         }
         bool fnd = false;
@@ -145,10 +153,10 @@ void handler::node(const shared_ptr<Osmium::OSM::Node const>& node) {
                         ++exported_nodes_;
                         fnd = true;
                         if (options_ & uo_show_saved_nodes) {
-                            std::cerr << "Saved Node " << id_ << 
+                            std::cerr << "Node " << id_ << 
                                 ", x=" << x_ << ", y=" << y_ << 
                                 ", k=" << typ << ", v=" << val << 
-                                ", name " << name << std::endl;
+                                ", name " << name << " exported" << std::endl;
                         }
                         break;
                     }
@@ -159,7 +167,9 @@ void handler::node(const shared_ptr<Osmium::OSM::Node const>& node) {
                 Osmium::OSM::TagList n_tags = node->tags();
                 size_t ii, len = n_tags.size();
                 Osmium::OSM::Tag *tag;
-                std::cerr << "Skipping Node " << id_ << ", with " << len << " tags" << std::endl;
+                std::cerr << "Node " << id_ <<
+                    ", x=" << x_ << ", y=" << y_ <<
+                    ", with " << len << " tags, name=" << name << " excluded" << std::endl;
                 for (ii = 0; ii < len; ii++) {
                     tag = &n_tags[ii];   // get a pointer to the OSM tag - key=val
                     const char *key = tag->key();
@@ -181,6 +191,7 @@ void handler::way(const shared_ptr<Osmium::OSM::Way>& way) {
             way_skipped_++;
             return;
         }
+        const char *ctyp = (type == SHPT_POLYGON) ? "poly" : "arc";
 
         bool added = false;
 
@@ -190,7 +201,7 @@ void handler::way(const shared_ptr<Osmium::OSM::Way>& way) {
             if (lay.shape()->type() == type) {
                 if (has_key_value(way->tags(), typ, val)) {
 #ifdef _MSC_VER
-                    size_t s = way->nodes().size();
+                    size_t s = wns; //  way->nodes().size();
                     double *x = 0;
                     double *y = 0;
                     if (s) {
@@ -212,9 +223,29 @@ void handler::way(const shared_ptr<Osmium::OSM::Way>& way) {
                     double x[way->nodes().size()], y[way->nodes().size()];
 #endif
                     if (tmp_nodes_.get(way->nodes(), x, y)) {
-                        lay.shape()->multipoint(type, way->nodes().size(), x, y);
+                        lay.shape()->multipoint(type, wns, x, y);
                         ++exported_ways_;
                         added = true;
+                        if (options_ & uo_show_saved_ways) {
+                            std::cerr << "Way " << ctyp << ", with " << wns << " nodes, kv " << 
+                                typ << "=" << val << 
+                                " exported" << std::endl;
+                            const Osmium::OSM::WayNodeList& ids = way->nodes();
+                            std::vector<Osmium::OSM::WayNode>::const_iterator ii = ids.begin();
+                            size_t jj;
+                            for (jj = 0; ii != ids.end() && jj < wns; ii++, jj++) {
+                                size_t id = ii->ref();
+                                double xx = x[jj];   // ii->lon();
+                                double yy = y[jj];  // ii->lat();
+                                std::cerr << " id " << id << " at " << xx << "," << yy << std::endl;
+                                
+                            }
+
+                        }
+                    }
+                    else {
+                        std::cerr << "FAILED Export way, with " << wns << " nodes!" << std::endl;
+                        way_skipped_++;
                     }
 #ifdef _MSC_VER
                     if (x)
@@ -234,7 +265,6 @@ void handler::way(const shared_ptr<Osmium::OSM::Way>& way) {
                 bool skip_keys = (options_ & uo_show_skipped_keys) ? true : false;
                 bool skip_tags = (options_ & uo_show_skipped_tags) ? true : false;
 
-                const char *ctyp = (type == SHPT_POLYGON) ? "poly" : "arc";
                 // Osmium::OSM::TagList
                 Osmium::OSM::Tag *tag;
                 Osmium::OSM::TagList &mtags = way->tags();
@@ -245,6 +275,8 @@ void handler::way(const shared_ptr<Osmium::OSM::Way>& way) {
                 //    }
                 //}
                 bool dnhdr = false;
+                std::cerr << "Way " << ctyp << ", with " << wns << " nodes, " << len << " tags - skipped" << std::endl;
+                dnhdr = true;
                 for (ii = 0; ii < len; ii++) {
                     tag = &mtags[ii];   // get a pointer to the OSM tag - key=val
                     const char *key = tag->key();
@@ -261,7 +293,7 @@ void handler::way(const shared_ptr<Osmium::OSM::Way>& way) {
                         }
                         else {
                             if (!dnhdr) {
-                                std::cerr << "Skipping " << ctyp << " Way, with " << wns << " nodes, " << len << " tags" << std::endl;
+                                std::cerr << "Way " << ctyp << ", with " << wns << " nodes, " << len << " tags" << std::endl;
                                 dnhdr = true;
                             }
                             std::cerr << "  " << key << "=" << val << std::endl;
