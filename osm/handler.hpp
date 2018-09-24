@@ -12,13 +12,27 @@
 #include <osmium/osm/node.hpp>
 #include <osmium/handler.hpp>
 
-#define uo_show_skipped_ways    0x00000001
-#define uo_show_skipped_keys    0x00000002
-#define uo_show_skipped_tags    0x00000004
-#define uo_show_skipped_nodes   0x00000008
-#define uo_show_saved_nodes     0x00000010
-#define uo_show_saved_ways      0x00000020
-#define uo_show_noname_nodes    0x00000040
+// for nodes
+#define uo_show_saved_nodes     0x00000001
+#define uo_show_skipped_nodes   0x00000002
+#define uo_show_noname_nodes    0x00000004
+
+// for ways
+#define uo_show_saved_ways      0x00000008
+#define uo_show_skipped_ways    0x00000010
+#define uo_show_skipped_keys    0x00000020
+#define uo_show_skipped_tags    0x00000040
+
+#define all_usr_opts (uo_show_skipped_ways | uo_show_skipped_keys | uo_show_skipped_tags | \
+    uo_show_skipped_nodes | uo_show_saved_nodes | uo_show_saved_ways | uo_show_noname_nodes )
+
+typedef struct tagSHOWOPTS {
+    size_t bit;
+    const char *desc;
+}SHOWOPTS, *PSHOWOPTS;
+
+extern std::string get_opts_stg(size_t flag);
+extern std::string get_opts_help();
 
 
 
@@ -37,19 +51,9 @@ public:
 
         void node(const shared_ptr<Osmium::OSM::Node const>& node);
         void way(const shared_ptr<Osmium::OSM::Way>& way);
-        void node_stats() {
-            std::cout << processed_nodes_ << " nodes processed, " <<
-                nodes_no_id_ << " no id, " << 
-                nodes_no_name_ << " no nm, " << 
-                nodes_skipped_ << " skipped, " <<
-                exported_nodes_ << " nodes exported" << std::endl;
-        }
-        void way_stats() {
-            std::cout << processed_ways_ << " ways processed, " << 
-                way_skipped_ << " ways akipped, " <<
-                ways_skipped_ << " way missed, " <<
-                exported_ways_ << " ways exported" << std::endl;
-        }
+        void node_stats();
+        void way_stats();
+
 
 private:
 

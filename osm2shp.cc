@@ -21,15 +21,12 @@
 
 #include "osm/handler.hpp"
 
-#define def_usr_opts (uo_show_skipped_ways | uo_show_skipped_keys | uo_show_skipped_tags | \
-    uo_show_skipped_nodes | uo_show_saved_nodes | uo_show_saved_ways | uo_show_noname_nodes )
-
 static const char *module = "osm2shp";
 static const char *version = "0.0.9 2018.09.12";
 
 static const char *usr_input = 0;
 static const char *usr_out_dir = 0;
-static uint64_t usr_options = def_usr_opts;
+static uint64_t usr_options = 0;    // all_usr_opts;
 
 int process_file(const char *file, const char *dir)
 {
@@ -42,7 +39,7 @@ int process_file(const char *file, const char *dir)
         handler.way_stats();
     }
     catch (const std::exception& ex) {
-        std::cerr << ex.what() << std::endl;
+        std::cerr << "Exception: " << ex.what() << std::endl;
         iret = 1;
     }
     std::cout << "Done processing " << iret << std::endl;
@@ -50,21 +47,6 @@ int process_file(const char *file, const char *dir)
     return iret;
 }
 
-#if 0 // 0000000000000000000000000000000000000000000000000000000
-int old_main(int argc, char* argv[]) 
-{
-    int iret = 0;
-    char *infile = argv[1];
-    char *outdir = argv[2];
-    if (argc != 3) {
-        std::cerr << "usage: " << argv[0] << " planet.osm(.gz|.bz2|.pbf) base-path" << std::endl;
-        return 1;
-    }
-    iret = process_file(infile, outdir);
-
-   return iret;
-}
-#endif // 0000000000000000000000000000000000000000000000000000000
 void show_version()
 {
     printf("%s: version %s\n", module, version);
@@ -76,9 +58,13 @@ void give_help(char *name)
     printf("Options:\n");
     printf(" --help  (-h or -?) = This help and exit(0)\n");
     printf(" --version          = Version, and exit(0)\n");
+    printf(" --show <val>  (-s) = Set 'show' options... (def=%i)\n", (int)usr_options);
+    std::string s = get_opts_help();
+    printf("%s", s.c_str());
     // TODO: More help
     printf("\n");
     printf(" Read 'input' as osm nodes, ways, and outputs landuse shapefiles to the 'out-dir'.\n");
+    printf(" The 'show' options are verbosity display items, showing features in the 'osm' file.\n");
 
 }
 
@@ -103,6 +89,18 @@ int parse_args(int argc, char **argv)
             case '?':
                 give_help(argv[0]);
                 return 2;
+                break;
+            case 's':
+                if (i2 < argc) {
+                    i++;
+                    sarg = argv[i];
+                    usr_options = atoi(sarg);
+                }
+                else {
+                    printf("%s: Expect numeric argument to follow '%s'. Try -? for help...\n", module, arg);
+                    return 1;
+                }
+
                 break;
                 // TODO: Other arguments
             default:

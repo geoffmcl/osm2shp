@@ -1,3 +1,5 @@
+
+#include <sstream>      // std::stringstream
 #include "handler.hpp"
 #include "shapefile.hpp"
 
@@ -12,7 +14,59 @@
 #define getpid _getpid
 #define mkdir(a,b)  _mkdir(a)
 #endif // _MSC_VER
+
 #define foreach BOOST_FOREACH
+
+static SHOWOPTS ShowOpts[] = {
+    { uo_show_saved_nodes , "nodes saved" },
+    { uo_show_skipped_nodes, "nodes skipped" },
+    { uo_show_noname_nodes, "nodes noname" },
+    { uo_show_saved_ways , "ways saved"},
+    { uo_show_skipped_ways, "ways skipped"},
+    { uo_show_skipped_keys, "ways skip keys"},
+    { uo_show_skipped_tags, "ways skip tags"},
+
+    /* MUST BE LAST */
+    { 0, 0 }
+};
+
+std::string get_opts_stg(size_t flag)
+{
+    std::stringstream ss;
+    PSHOWOPTS pso = ShowOpts;
+    size_t cnt = 0;
+    if (flag) {
+        while (pso->desc) {
+            if (pso->bit & flag) {
+                if (cnt)
+                    ss << ", ";
+                ss << pso->desc;
+                cnt++;
+                //flag &= ~pso->bit;
+                //if (!flag)
+                //    break;
+            }
+            pso++;
+        }
+    }
+    else {
+        ss << "none(0)";
+    }
+    return ss.str();
+}
+
+std::string get_opts_help()
+{
+    std::stringstream ss;
+    PSHOWOPTS pso = ShowOpts;
+    while (pso->desc) {
+        ss << " " << pso->desc << "=" << pso->bit << std::endl;
+
+        pso++;
+    }
+    return ss.str();
+}
+
 
 typedef std::vector<Osmium::OSM::Tag> vTAGS;
 typedef std::vector<std::string> vSTG;
@@ -28,6 +82,16 @@ bool Is_in_KeySkipped(std::string & key)
     return false;
 
 }
+void show_skipped_keys()
+{
+    size_t ii, max = vKeysSkipped.size();
+    std::cout << "Way keys skipped " << max << std::endl;
+    for (ii = 0; ii < max; ii++) {
+        std::string key = vKeysSkipped[ii];
+        std::cout << " " << key;
+    }
+    std::cout << std::endl;
+}
 
 static vTAGS vSkipped;
 
@@ -40,6 +104,92 @@ bool Is_in_skipped(Osmium::OSM::Tag &tag)
     }
     return false;
 }
+
+static size_t max_line = 120;
+void show_skipped_tags2()
+{
+    size_t len, ii, max = vSkipped.size();
+    std::cout << "Way tags skipped " << max << ", may have multiple 'values', but only first shown..." << std::endl;
+    std::stringstream ss;
+    std::string s;
+    for (ii = 0; ii < max; ii++) {
+        Osmium::OSM::Tag tag(vSkipped[ii]);
+        ss << " " << tag.key() << "=" << tag.value();
+        s = ss.str();
+        len = s.size();
+        if (len > max_line) {
+            std::cout << s << std::endl;
+            ss.str(""); // clear stringstream
+        }
+    }
+    s = ss.str();
+    std::cout << s << std::endl;
+}
+
+typedef struct tagWAYTAGS {
+    std::string key;
+    vSTG values;
+}WAYTAGS, * PWAYTAGS;
+
+typedef std::vector<PWAYTAGS> vWAYTAGS;
+
+vWAYTAGS vWayTags;
+
+void add_to_waytags(std::string &k, std::string &v)
+{
+    PWAYTAGS pwt;
+    size_t ii, jj, max2, max = vWayTags.size();
+    for (ii = 0; ii < max; ii++)
+    {
+        pwt = vWayTags[ii];
+        if (pwt->key == k) {
+            max2 = pwt->values.size();
+            for (jj = 0; jj < max2; jj++) {
+                if (v == pwt->values[jj])
+                    return;
+            }
+            pwt->values.push_back(v);
+            return;
+        }
+    }
+    pwt = new WAYTAGS;
+    pwt->key = k;
+    pwt->values.push_back(v);
+    vWayTags.push_back(pwt);
+}
+
+void show_skipped_tags()
+{
+    PWAYTAGS pwt;
+    size_t ii, jj, max2, max = vWayTags.size();
+    if (!max)
+        return;
+    std::stringstream ss;
+    std::string s;
+    std::cout << "Way tags skipped " << max << ", may have multiple 'values' as shown..." << std::endl;
+    for (ii = 0; ii < max; ii++)
+    {
+        pwt = vWayTags[ii];
+        max2 = pwt->values.size();
+        ss << pwt->key << " (" << max2 << ") = ";
+        for (jj = 0; jj < max2; jj++) {
+            if (jj)
+                ss << ", ";
+            ss << pwt->values[jj];
+        }
+        s = ss.str();
+        std::cout << s << std::endl;
+
+        ss.str(""); // clear
+        pwt->values.clear();
+        delete pwt;
+
+    }
+    vWayTags.clear();
+
+
+}
+
 
 namespace osm {
 
@@ -92,6 +242,12 @@ handler::handler(const std::string& base, uint64_t opts)
         add_layer("water_area",       "natural",  "water");
         add_layer("coast_line", "natural", "coastline");    // Add coastline shp
 
+        if (opts)
+        {
+            std::string s = get_opts_stg(opts);
+            int i = (int)opts;
+            std::cout << "Show option " << i << " = " << s << std::endl;
+        }
 }
 
 handler::~handler() {
@@ -280,13 +436,15 @@ void handler::way(const shared_ptr<Osmium::OSM::Way>& way) {
                 for (ii = 0; ii < len; ii++) {
                     tag = &mtags[ii];   // get a pointer to the OSM tag - key=val
                     const char *key = tag->key();
-                    std::string s(key);
-                    if (skip_keys && Is_in_KeySkipped(s)) {
+                    const char *val = tag->value();
+                    std::string k(key);
+                    std::string v(val);
+                    add_to_waytags(k, v);
+                    if (skip_keys && Is_in_KeySkipped(k)) {
                         // have already shown this k
                     }
                     else {
-                        vKeysSkipped.push_back(s);
-                        const char *val = tag->value();
+                        vKeysSkipped.push_back(k);
                         Osmium::OSM::Tag t(key, val);   // create new tag
                         if (skip_tags && Is_in_skipped(t)) {
                             // have already shown this k=v
@@ -313,5 +471,29 @@ bool handler::is_area(const shared_ptr<Osmium::OSM::Way>& way) {
                has_key_value(way->tags(), "natural", "water") ||
                has_key_value(way->tags(), "natural", "woord");
 }
+
+void handler::node_stats() 
+{
+    std::cout << processed_nodes_ << " nodes processed, " <<
+        nodes_no_id_ << " no id, " <<
+        nodes_no_name_ << " no nm, " <<
+        nodes_skipped_ << " skipped, " <<
+        exported_nodes_ << " nodes exported" << std::endl;
+}
+
+void handler::way_stats()
+{
+    std::cout << processed_ways_ << " ways processed, " <<
+        way_skipped_ << " ways akipped, " <<
+        ways_skipped_ << " way missed, " <<
+        exported_ways_ << " ways exported" << std::endl;
+
+    if (options_ & uo_show_skipped_ways) {
+        // show_skipped_keys();
+        show_skipped_tags();
+    }
+}
+
+
 
 }
