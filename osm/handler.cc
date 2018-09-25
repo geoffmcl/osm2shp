@@ -1,5 +1,6 @@
 
 #include <sstream>      // std::stringstream
+#include <iomanip>      // std::setw
 #include "handler.hpp"
 #include "shapefile.hpp"
 
@@ -29,6 +30,37 @@ static SHOWOPTS ShowOpts[] = {
     /* MUST BE LAST */
     { 0, 0 }
 };
+
+static SHPTYPE sShpTypes[] = {
+    { SHPT_NULL, "null" },  //       0
+    { SHPT_POINT, "point" },    //      1
+    { SHPT_ARC, "arc" },        //  3
+    { SHPT_POLYGON, "poly" },   //    5
+    { SHPT_MULTIPOINT, "mpoint" },  // 8
+    { SHPT_POINTZ, "pointz" },  //     11
+    { SHPT_ARCZ, "arcz" },  //       13
+    { SHPT_POLYGONZ, "polyz" }, //   15
+    { SHPT_MULTIPOINTZ, "mpoitz" }, // 18
+    { SHPT_POINTM, "pointm" },  //     21
+    { SHPT_ARCM, "arcm" },  //       23
+    { SHPT_POLYGONM, "polym" }, //   25
+    { SHPT_MULTIPOINTM, "mpointm" },    // 28
+    { SHPT_MULTIPATCH, "mpatch" },  // 31
+    // more?
+    // MUST BE FINAL
+    { 0, 0 }
+};
+
+const char *shp_type_to_stg(int typ)
+{
+    PSHPTYPE pst = sShpTypes;
+    while (pst->ctype) {
+        if (pst->type == typ)
+            return pst->ctype;
+        pst++;
+    }
+    return "unkn";
+}
 
 std::string get_opts_stg(size_t flag)
 {
@@ -295,6 +327,8 @@ handler::~handler() {
 
 }
 
+
+
 void handler::add_shape(const std::string& name, int type) {
         shapes_[name] = new shape_file(base_path_ + "/" + name, type);
         if (type == SHPT_POINT)
@@ -527,6 +561,64 @@ void handler::way_stats()
     }
 }
 
+std::string handler::get_shape_stats()
+{
+    shape_file *sfp;
+    const char *cp;
+    size_t cnt, len, max = shapes_.size();
+    std::stringstream ss;
+    std::string s;
+    size_t max_first = 0;
+    int typ, max_type = 8;
+    size_t tot_cnt = 0;
+    size_t max_file = 0;
+    size_t max_cnt = 5;
+    foreach(shape_map::value_type& value, shapes_)
+    {
+        s = value.first;
+        sfp = value.second;
+        len = s.size();
+        if (len > max_first)
+            max_first = len;
+        cnt = sfp->count();
+        tot_cnt += cnt;
+        s = sfp->name();
+        len = s.size();
+        if (len > max_file)
+            max_file = len;
+    }
 
+    ss << "Shapes created " << max << std::endl;
+    foreach(shape_map::value_type& value, shapes_)
+    {
+        sfp = value.second;
+        ss << std::left;
+        ss << " " << std::setw(max_first) << value.first << " ";
+        typ = sfp->type();
+        cp = shp_type_to_stg(typ);
+        cnt = sfp->count();
+        s = sfp->name();
+        ss << std::right;
+        ss << std::setw(max_cnt) << cnt;
+        ss << std::left;
+        ss << " " << std::setw(max_file) << s << " ";
+        ss << std::setw(max_type) << cp << std::endl;
+        
+    }
 
+    ss << std::left;
+    ss << " " << std::setw(max_first) << "Total" << " ";
+    ss << std::right;
+    ss << std::setw(max_cnt) << tot_cnt;
+    ss << std::left;
+    ss << " points." << std::endl;
+    return ss.str();
 }
+
+
+
+} // end namespace osm
+
+/* eof */
+
+

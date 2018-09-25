@@ -34,6 +34,10 @@ typedef struct tagSHOWOPTS {
 extern std::string get_opts_stg(size_t flag);
 extern std::string get_opts_help();
 
+typedef struct tagSHPTYPE {
+    int type;
+    const char *ctype;
+}SHPTYPE, *PSHPTYPE;
 
 
 namespace osm {
@@ -53,6 +57,7 @@ public:
         void way(const shared_ptr<Osmium::OSM::Way>& way);
         void node_stats();
         void way_stats();
+        std::string handler::get_shape_stats();
 
 
 private:

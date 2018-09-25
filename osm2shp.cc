@@ -37,6 +37,7 @@ int process_file(const char *file, const char *dir)
         Osmium::Input::read(infile, handler);
         handler.node_stats();
         handler.way_stats();
+        std::cout << handler.get_shape_stats();
     }
     catch (const std::exception& ex) {
         std::cerr << "Exception: " << ex.what() << std::endl;

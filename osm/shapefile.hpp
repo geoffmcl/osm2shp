@@ -19,6 +19,8 @@ public:
         void add_attribute(int field, const std::string& value);
         void point(double x, double y);
         void multipoint(int type, size_t size, const double* x, const double* y);
+        std::string name() { return name_; }
+        size_t count() { return point_cnt_; }
 
 private:
         void open_shp();
@@ -30,6 +32,7 @@ private:
         SHPHandle   shp_;
         DBFHandle   dbf_;
         int         current_id_;
+        size_t      point_cnt_;
 };
 
 }

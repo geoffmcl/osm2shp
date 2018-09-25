@@ -7,7 +7,7 @@
 namespace osm {
 
 shape_file::shape_file(const std::string& name, int type)
-        : name_(name), type_(type), shp_(0), dbf_(0), current_id_(-1) {
+        : name_(name), type_(type), shp_(0), dbf_(0), current_id_(-1), point_cnt_(0) {
         open_shp();
         create_prj();
 }
@@ -33,6 +33,7 @@ void shape_file::point(double x, double y) {
         assert(type_ == SHPT_POINT);
         SHPObject* obj = SHPCreateSimpleObject(SHPT_POINT, 1, &x, &y, 0);
         current_id_ = SHPWriteObject(shp_, -1, obj);
+        point_cnt_++;
         SHPDestroyObject(obj);
         if (current_id_ < 0)
                 throw std::runtime_error("failed to write point object");
@@ -43,6 +44,7 @@ void shape_file::multipoint(int type, size_t size, const double* x, const double
         SHPObject* obj = SHPCreateSimpleObject(type, size,
                                                const_cast<double*>(x), const_cast<double*>(y), 0);
         current_id_ = SHPWriteObject(shp_, -1, obj);
+        point_cnt_ += size;
         SHPDestroyObject(obj);
         if (current_id_ < 0)
                 throw std::runtime_error("failed to write multipoint object");
