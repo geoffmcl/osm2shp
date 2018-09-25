@@ -70,6 +70,7 @@ std::string get_opts_help()
 
 typedef std::vector<Osmium::OSM::Tag> vTAGS;
 typedef std::vector<std::string> vSTG;
+typedef std::vector<int> vINT;
 
 static vSTG vKeysSkipped;
 bool Is_in_KeySkipped(std::string & key)
@@ -129,6 +130,7 @@ void show_skipped_tags2()
 typedef struct tagWAYTAGS {
     std::string key;
     vSTG values;
+    vINT counts;
 }WAYTAGS, * PWAYTAGS;
 
 typedef std::vector<PWAYTAGS> vWAYTAGS;
@@ -138,6 +140,7 @@ vWAYTAGS vWayTags;
 void add_to_waytags(std::string &k, std::string &v)
 {
     PWAYTAGS pwt;
+    int i;
     size_t ii, jj, max2, max = vWayTags.size();
     for (ii = 0; ii < max; ii++)
     {
@@ -145,22 +148,29 @@ void add_to_waytags(std::string &k, std::string &v)
         if (pwt->key == k) {
             max2 = pwt->values.size();
             for (jj = 0; jj < max2; jj++) {
-                if (v == pwt->values[jj])
+                if (v == pwt->values[jj]) {
+                    i = pwt->counts[jj];
+                    i++;
+                    pwt->counts[jj] = i; // bumpt the count
                     return;
+                }
             }
             pwt->values.push_back(v);
+            pwt->counts.push_back(1);
             return;
         }
     }
     pwt = new WAYTAGS;
     pwt->key = k;
     pwt->values.push_back(v);
+    pwt->counts.push_back(1);
     vWayTags.push_back(pwt);
 }
 
 void show_skipped_tags()
 {
     PWAYTAGS pwt;
+    int i, tot;
     size_t ii, jj, max2, max = vWayTags.size();
     if (!max)
         return;
@@ -171,17 +181,30 @@ void show_skipped_tags()
     {
         pwt = vWayTags[ii];
         max2 = pwt->values.size();
-        ss << pwt->key << " (" << max2 << ") = ";
+        ss << pwt->key;
+        if (max2 > 1)
+            ss << " (" << max2 << ")";
+        ss << " = ";
+        tot = 0;
         for (jj = 0; jj < max2; jj++) {
             if (jj)
                 ss << ", ";
             ss << pwt->values[jj];
+            i = pwt->counts[jj];
+            tot += i;
+            if (i > 1) {
+                ss << " (" << i << ")";
+            }
+        }
+        if (tot > 1) {
+            ss << " t=" << tot;
         }
         s = ss.str();
         std::cout << s << std::endl;
 
         ss.str(""); // clear
         pwt->values.clear();
+        pwt->counts.clear();
         delete pwt;
 
     }
@@ -196,7 +219,7 @@ namespace osm {
 template<typename T, class K>
 inline bool has_key(const T& map, const K& key) {
 		const char *v = map.get_value_by_key(key);
-		return v;
+		return (v ? true : false);
 }
 
 template<typename T, class K, class V>
@@ -231,14 +254,24 @@ handler::handler(const std::string& base, uint64_t opts)
         add_layer("roadbig_line",     "highway",  "motorway");
         add_layer("roadbig_line",     "highway",  "trunk");
         add_layer("roadmedium_line",  "highway",  "primary");
+
+        // expand small roads
         add_layer("roadsmall_line" ,  "highway",  "secondary");
+        add_layer("roadsmall_line", "highway", "residential");  // 20180925 - add residential roads
+        add_layer("roadsmall_line", "highway", "service");  // 20180925 - add service roads
+        add_layer("roadsmall_line", "highway", "track");  // 20180925 - add track roads
+        add_layer("roadsmall_line", "highway", "unclassified");  // 20180925 - add unclassified roads
+
         add_layer("railway_line",     "railway",  "rail");
         add_layer("city_point",       "place",    "city");
         add_layer("town_point",       "place",    "town");
         add_layer("suburb_point",     "place",    "suburb");
         add_layer("village_point",    "place",    "village");
+
         add_layer("water_line",       "waterway", "river");
         add_layer("water_line",       "waterway", "canal");
+        add_layer("water_line", "waterway", "stream");  // 20180925 - add streams
+
         add_layer("water_area",       "natural",  "water");
         add_layer("coast_line", "natural", "coastline");    // Add coastline shp
 
@@ -327,7 +360,7 @@ void handler::node(const shared_ptr<Osmium::OSM::Node const>& node) {
                     ", x=" << x_ << ", y=" << y_ <<
                     ", with " << len << " tags, name=" << name << " excluded" << std::endl;
                 for (ii = 0; ii < len; ii++) {
-                    tag = &n_tags[ii];   // get a pointer to the OSM tag - key=val
+                    tag = &n_tags[(int)ii];   // get a pointer to the OSM tag - key=val
                     const char *key = tag->key();
                     const char *val = tag->value();
                     std::cerr << "  " << key << "=" << val << std::endl;
@@ -434,7 +467,7 @@ void handler::way(const shared_ptr<Osmium::OSM::Way>& way) {
                 std::cerr << "Way " << ctyp << ", with " << wns << " nodes, " << len << " tags - skipped" << std::endl;
                 dnhdr = true;
                 for (ii = 0; ii < len; ii++) {
-                    tag = &mtags[ii];   // get a pointer to the OSM tag - key=val
+                    tag = &mtags[(int)ii];   // get a pointer to the OSM tag - key=val
                     const char *key = tag->key();
                     const char *val = tag->value();
                     std::string k(key);
