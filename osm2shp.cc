@@ -57,9 +57,9 @@ void give_help(char *name)
     show_version();
     printf("%s: usage: [options] usr_input.osm[.gz|bz2|pbf] out-dir\n", module);
     printf("Options:\n");
-    printf(" --help  (-h or -?) = This help and exit(0)\n");
-    printf(" --version          = Version, and exit(0)\n");
-    printf(" --show <val>  (-s) = Set 'show' options... (def=%i)\n", (int)usr_options);
+    printf(" --help       (-h or -?) = This help and exit(0)\n");
+    printf(" --version               = Version, and exit(0)\n");
+    printf(" --show[+|-] <val>  (-s) = [add|sub|set] 'show' option bits... (def=%i)\n", (int)usr_options);
     std::string s = get_opts_help();
     printf("%s", s.c_str());
     // TODO: More help
@@ -69,10 +69,36 @@ void give_help(char *name)
 
 }
 
+#define ISDIGIT(a) ((a >='0') && (a <= '9'))
+
+
+static bool is_integer(char *sarg) 
+{
+    int c = *sarg;
+    // allow it to start with '-' or '+'
+    if (c == '-')
+        sarg++;
+    else if (c == '+')
+        sarg++;
+    size_t ii, len = strlen(sarg);
+    if (len == 0)
+        return false;   // sort of not an integer
+    for (ii = 0; ii < len; ii++) {
+        c = sarg[ii];
+        if (!ISDIGIT(c))
+            return false;
+    }
+    return true;
+}
+
 int parse_args(int argc, char **argv)
 {
     int i, i2, c;
     char *arg, *sarg;
+    size_t len;
+    bool add = false;
+    bool sub = false;
+    uint64_t val;
     for (i = 1; i < argc; i++) {
         arg = argv[i];
         i2 = i + 1;
@@ -92,10 +118,30 @@ int parse_args(int argc, char **argv)
                 return 2;
                 break;
             case 's':
+                len = strlen(arg);
+                add = false;
+                sub = false;
+                if (arg[len - 1] == '+')
+                    add = true;
+                else if (arg[len - 1] == '-')
+                    sub = true;
                 if (i2 < argc) {
                     i++;
                     sarg = argv[i];
-                    usr_options = atoi(sarg);
+                    if (is_integer(sarg)) {
+                        val = atoi(sarg);
+                    }
+                    else {
+                        printf("%s: Expect integer argument to follow '%s', not '%s'.\n", module, arg, sarg);
+                        return 1;
+                    }
+                    if (add)
+                        usr_options |= val;
+                    else if (sub)
+                        usr_options &= ~val;
+                    else
+                        usr_options = val;
+
                 }
                 else {
                     printf("%s: Expect numeric argument to follow '%s'. Try -? for help...\n", module, arg);
