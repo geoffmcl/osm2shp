@@ -1,8 +1,8 @@
 @setlocal
 @set TMPBIN=Release\osm2shp.exe
-@set TMP3RD=X:\3rdParty.x64\bin
+@rem set TMP3RD=X:\3rdParty.x64\bin
 @if NOT EXIST %TMPBIN% goto NOEXE
-@if NOT EXIST %TMP3RD%\nul goto NO3RD
+@rem if NOT EXIST %TMP3RD%\nul goto NO3RD
 
 @REM set PATH=%TMP3RD%;%PATH%
 
