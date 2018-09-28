@@ -356,12 +356,16 @@ void handler::node(const shared_ptr<Osmium::OSM::Node const>& node) {
 
         tmp_nodes_.set(id_, x_, y_);
 
-        const char* name = node->tags().get_value_by_key("name");
+        Osmium::OSM::Tag *tag;
+        //const char* name = node->tags().get_value_by_key("name");
+        Osmium::OSM::TagList n_tags = node->tags();
+        size_t ii, len = n_tags.size();
+        const char* name = n_tags.get_value_by_key("name");
         if (!name) {
             nodes_no_name_++;
             if (options_ & uo_show_noname_nodes) {
                 std::cerr << "Node " << id_ <<
-                    ", x=" << x_ << ", y=" << y_ << " - noname" << std::endl;
+                    ", x=" << x_ << ", y=" << y_ << ", t=" << len << " - noname" << std::endl;
             }
             return;
         }
@@ -378,8 +382,16 @@ void handler::node(const shared_ptr<Osmium::OSM::Node const>& node) {
                         if (options_ & uo_show_saved_nodes) {
                             std::cerr << "Node " << id_ << 
                                 ", x=" << x_ << ", y=" << y_ << 
+                                ", t=" << len <<
                                 ", k=" << typ << ", v=" << val << 
-                                ", name " << name << " exported" << std::endl;
+                                ", name=" << name << " - exported" << std::endl;
+                            for (ii = 0; ii < len; ii++) {
+                                tag = &n_tags[(int)ii];   // get a pointer to the OSM tag - key=val
+                                const char *key = tag->key();
+                                const char *val = tag->value();
+                                if (strcmp("name", key))
+                                    std::cerr << "  " << key << "=" << val << std::endl;
+                            }
                         }
                         break;
                     }
@@ -387,17 +399,15 @@ void handler::node(const shared_ptr<Osmium::OSM::Node const>& node) {
         }
         if (!fnd) {
             if (options_ & uo_show_skipped_nodes) {
-                Osmium::OSM::TagList n_tags = node->tags();
-                size_t ii, len = n_tags.size();
-                Osmium::OSM::Tag *tag;
                 std::cerr << "Node " << id_ <<
                     ", x=" << x_ << ", y=" << y_ <<
-                    ", with " << len << " tags, name=" << name << " excluded" << std::endl;
+                    ", t=" << len << ", name=" << name << " - excluded" << std::endl;
                 for (ii = 0; ii < len; ii++) {
                     tag = &n_tags[(int)ii];   // get a pointer to the OSM tag - key=val
                     const char *key = tag->key();
                     const char *val = tag->value();
-                    std::cerr << "  " << key << "=" << val << std::endl;
+                    if (strcmp("name",key))
+                        std::cerr << "  " << key << "=" << val << std::endl;
                 }
             }
             nodes_skipped_++;
